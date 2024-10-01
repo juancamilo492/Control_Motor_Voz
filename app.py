@@ -71,8 +71,10 @@ if result:
 
         if language_name == 'es':
             st.write("Idioma reconocido: Español")
+        elif language_name == 'en':
+            st.write("Idioma reconocido: English")  # Cambiado a "English"
         else:
-            st.write(f"Idioma reconocido: {language_name}")
+            st.write(f"Idioma reconocido: {language_name.capitalize()}")  # Para otros idiomas
 
         st.write(f"Nivel de confianza: {confidence:.2f}%")  # Muestra el nivel de confianza
 
