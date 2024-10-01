@@ -7,6 +7,20 @@ import paho.mqtt.client as paho
 import json
 from googletrans import Translator
 
+# Mapeo de códigos de idiomas a nombres completos
+language_names = {
+    'es': 'Español',
+    'en': 'Inglés',
+    'fr': 'Francés',
+    'de': 'Alemán',
+    'pt': 'Portugués',
+    'it': 'Italiano',
+    'zh-cn': 'Chino Simplificado',
+    'ja': 'Japonés',
+    'ru': 'Ruso',
+    # Agrega más idiomas según sea necesario
+}
+
 def on_publish(client, userdata, result):  # Callback
     print("El dato ha sido publicado \n")
     pass
@@ -66,21 +80,16 @@ if result:
         # Procesar el texto recibido y verificar el idioma y la confianza
         translator = Translator()
         detected_language = translator.detect(recognized_text)
-        language_name = detected_language.lang
+        language_code = detected_language.lang
         confidence = detected_language.confidence * 100  # Convertir a porcentaje
 
-        if language_name == 'es':
-            st.write("Idioma reconocido: Español")
-        elif language_name == 'en':
-            st.write("Idioma reconocido: English")  # Cambiado a "English"
-        else:
-            st.write(f"Idioma reconocido: {language_name.capitalize()}")  # Para otros idiomas
+        # Obtener el nombre completo del idioma
+        language_name = language_names.get(language_code, language_code.capitalize())  # Usa el nombre del idioma, o el código si no se encuentra
 
+        st.write(f"Idioma reconocido: {language_name}")  # Muestra el idioma reconocido
         st.write(f"Nivel de confianza: {confidence:.2f}%")  # Muestra el nivel de confianza
 
         # Publicar el mensaje en MQTT
         client1.on_publish = on_publish
         message = json.dumps({"Act1": recognized_text.strip()})
         ret = client1.publish("CONTROL_VOZ", message)
-
-    # Mostrar mensajes de comandos no reconocidos
