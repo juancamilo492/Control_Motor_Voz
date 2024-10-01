@@ -3,32 +3,29 @@ import streamlit as st
 from bokeh.models.widgets import Button
 from bokeh.models import CustomJS
 from streamlit_bokeh_events import streamlit_bokeh_events
-from PIL import Image
-import time
 import paho.mqtt.client as paho
 import json
 from googletrans import Translator
 
-def on_publish(client, userdata, result):  # create function for callback
-    print("el dato ha sido publicado \n")
+def on_publish(client, userdata, result):  # Callback
+    print("El dato ha sido publicado \n")
     pass
 
 def on_message(client, userdata, message):
     global message_received
-    time.sleep(2)
     message_received = str(message.payload.decode("utf-8"))
-    st.write(message_received)
+    st.write(message_received)  # Muestra el mensaje en Streamlit
 
 broker = "broker.mqttdashboard.com"
 port = 1883
-client1 = paho.Client("MOTOR_WEB_APP_VOICE")  # CAMBIAR
+client1 = paho.Client("MOTOR_WEB_APP_VOICE")  # Cambiar
 client1.on_message = on_message
+client1.connect(broker, port)
+client1.subscribe("CONTROL_VOZ")
+client1.loop_start()  # Comienza el bucle del cliente MQTT
 
 st.title("Interfaces Multimodales")
 st.subheader("CONTROL POR VOZ")
-
-image = Image.open('voice_ctrl.jpg')
-st.image(image, width=200)
 
 st.write("Toca el Botón y habla ")
 
@@ -47,7 +44,7 @@ stt_button.js_on_event("button_click", CustomJS(code="""
             }
         }
         if (value != "") {
-            document.dispatchEvent(new CustomEvent("GET_TEXT", {detail: value}));
+            document.dispatchEvent(new CustomEvent("GET_TEXT", { detail: value }));
         }
     }
     recognition.start();
@@ -66,41 +63,22 @@ if result:
         recognized_text = result.get("GET_TEXT").strip()
         st.write("Texto escuchado:", recognized_text)
 
-        # Language detection
+        # Procesar el texto recibido y verificar el idioma y la confianza
         translator = Translator()
         detected_language = translator.detect(recognized_text)
+        language_name = detected_language.lang
+        confidence = detected_language.confidence * 100  # Convertir a porcentaje
 
-        # Mapping of language codes to full names
-        language_map = {
-            'en': 'Inglés',
-            'es': 'Español',
-            'fr': 'Francés',
-            'de': 'Alemán',
-            'it': 'Italiano',
-            'pt': 'Portugués',
-            'zh-cn': 'Chino Simplificado',
-            'ja': 'Japonés',
-            'ru': 'Ruso',
-            # Add more languages as needed
-        }
+        if language_name == 'es':
+            st.write("Idioma reconocido: Español")
+        else:
+            st.write(f"Idioma reconocido: {language_name}")
 
-        # Get the full language name
-        language_name = language_map.get(detected_language.lang, detected_language.lang)
-        confidence_percentage = detected_language.confidence * 100  # Convert to percentage
+        st.write(f"Nivel de confianza: {confidence:.2f}%")  # Muestra el nivel de confianza
 
-        st.write(f"Idioma reconocido: {language_name} (Confianza: {confidence_percentage:.2f}%)")
-
-        # If the recognized language is not Spanish, translate the text
-        if detected_language.lang != 'es':
-            translated_text = translator.translate(recognized_text, src=detected_language.lang, dest='es').text
-            st.write("Texto traducido:", translated_text)
-
+        # Publicar el mensaje en MQTT
         client1.on_publish = on_publish
-        client1.connect(broker, port)
-        message = json.dumps({"Act1": recognized_text})
+        message = json.dumps({"Act1": recognized_text.strip()})
         ret = client1.publish("CONTROL_VOZ", message)
 
-    try:
-        os.mkdir("temp")
-    except:
-        pass
+    # Mostrar mensajes de comandos no reconocidos
