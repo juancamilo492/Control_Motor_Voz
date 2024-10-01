@@ -71,7 +71,25 @@ if result:
         # Language detection
         translator = Translator()
         detected_language = translator.detect(recognized_text)
-        st.write(f"Idioma reconocido: {detected_language.lang} (Confianza: {detected_language.confidence:.2f})")
+
+        # Mapping of language codes to full names
+        language_map = {
+            'en': 'Inglés',
+            'es': 'Español',
+            'fr': 'Francés',
+            'de': 'Alemán',
+            'it': 'Italiano',
+            'pt': 'Portugués',
+            'zh-cn': 'Chino Simplificado',
+            'ja': 'Japonés',
+            'ru': 'Ruso',
+            # Add more languages as needed
+        }
+
+        # Get the full language name
+        language_name = language_map.get(detected_language.lang, detected_language.lang)
+        
+        st.write(f"Idioma reconocido: {language_name} (Confianza: {detected_language.confidence:.2f})")
 
         client1.on_publish = on_publish
         client1.connect(broker, port)
