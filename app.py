@@ -5,10 +5,8 @@ from bokeh.models import CustomJS
 from streamlit_bokeh_events import streamlit_bokeh_events
 from PIL import Image
 import time
-import glob
 import paho.mqtt.client as paho
 import json
-from gtts import gTTS
 from googletrans import Translator
 
 def on_publish(client, userdata, result):  # create function for callback
@@ -66,7 +64,7 @@ result = streamlit_bokeh_events(
 if result:
     if "GET_TEXT" in result:
         recognized_text = result.get("GET_TEXT").strip()
-        st.write("Texto reconocido:", recognized_text)
+        st.write("Texto escuchado:", recognized_text)
 
         # Language detection
         translator = Translator()
@@ -88,8 +86,14 @@ if result:
 
         # Get the full language name
         language_name = language_map.get(detected_language.lang, detected_language.lang)
-        
-        st.write(f"Idioma reconocido: {language_name} (Confianza: {detected_language.confidence:.2f})")
+        confidence_percentage = detected_language.confidence * 100  # Convert to percentage
+
+        st.write(f"Idioma reconocido: {language_name} (Confianza: {confidence_percentage:.2f}%)")
+
+        # If the recognized language is not Spanish, translate the text
+        if detected_language.lang != 'es':
+            translated_text = translator.translate(recognized_text, src=detected_language.lang, dest='es').text
+            st.write("Texto traducido:", translated_text)
 
         client1.on_publish = on_publish
         client1.connect(broker, port)
