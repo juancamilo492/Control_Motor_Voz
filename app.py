@@ -89,7 +89,16 @@ if result:
         st.write(f"Idioma reconocido: {language_name}")  # Muestra el idioma reconocido
         st.write(f"Nivel de confianza: {confidence:.2f}%")  # Muestra el nivel de confianza
 
-        # Publicar el mensaje en MQTT
-        client1.on_publish = on_publish
-        message = json.dumps({"Act1": recognized_text.strip()})
-        ret = client1.publish("CONTROL_VOZ", message)
+        # Si el idioma no es español, traducir el texto
+        if language_code != 'es':
+            translation = translator.translate(recognized_text, dest='es')  # Traduce al español
+            translated_text = translation.text
+            st.write(f"Traducción: {translated_text}")  # Muestra la traducción
+
+            # Publicar la traducción en MQTT para el servo
+            message = json.dumps({"Act1": translated_text.strip()})  # Envía la traducción al servo
+            client1.publish("CONTROL_VOZ", message)
+        else:
+            # Publicar el texto original en MQTT para el servo si es español
+            message = json.dumps({"Act1": recognized_text.strip()})
+            client1.publish("CONTROL_VOZ", message)
