@@ -7,11 +7,6 @@ from PIL import Image
 import time
 import paho.mqtt.client as paho
 import json
-import torch
-from transformers import pipeline
-
-# Configuración del modelo de NLP
-classifier = pipeline("zero-shot-classification")
 
 def on_publish(client, userdata, result):  # Callback
     print("El dato ha sido publicado \n")
@@ -58,6 +53,9 @@ stt_button.js_on_event("button_click", CustomJS(code="""
     recognition.start();
 """))
 
+# Variable para almacenar el texto reconocido
+recognized_text = ""
+
 result = streamlit_bokeh_events(
     stt_button,
     events="GET_TEXT",
@@ -66,25 +64,26 @@ result = streamlit_bokeh_events(
     override_height=75,
     debounce_time=0)
 
-# Categorías para clasificar los mensajes
-categories = ["abre la puerta", "cierra la puerta", "enciende las luces", "apaga las luces"]
+# Palabras clave y sus correspondientes mensajes
+commands = {
+    "abrir": "abre la puerta",
+    "cerrar": "cierra la puerta",
+    "encender": "enciende las luces",
+    "apagar": "apaga las luces"
+}
 
 if result:
     if "GET_TEXT" in result:
-        recognized_text = result.get("GET_TEXT").strip()  # Almacena el texto reconocido
+        recognized_text = result.get("GET_TEXT").strip().lower()  # Almacena el texto reconocido
         st.write("Texto reconocido:", recognized_text)
 
-        # Usar el clasificador para predecir el comando
-        predictions = classifier(recognized_text, categories)
-        predicted_label = predictions['labels'][0]  # Obtener la etiqueta más probable
-
-        # Si la confianza es suficientemente alta, enviar el mensaje
-        if predictions['scores'][0] > 0.7:  # Ajusta el umbral de confianza según sea necesario
-            message = json.dumps({"Act1": predicted_label})
-            client1.publish("mensajeUsuario", message)
-            st.success(f"Mensaje enviado: {predicted_label}")
-        else:
-            st.warning("No se reconoció ningún comando válido.")
+        # Procesar el texto reconocido y enviar el tópico correspondiente
+        for key, topic in commands.items():
+            if key in recognized_text:
+                message = json.dumps({"Act1": topic})
+                client1.publish("mensajeUsuario", message)
+                st.success(f"Mensaje enviado: {topic}")
+                break  # Salir del bucle después de enviar el mensaje
 
 # Crear columnas para los controles manuales
 col1, col2 = st.columns(2)
