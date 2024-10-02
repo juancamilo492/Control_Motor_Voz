@@ -53,19 +53,8 @@ stt_button.js_on_event("button_click", CustomJS(code="""
     recognition.start();
 """))
 
-# Campo de texto para enviar mensajes manualmente
-user_input = st.text_input("Escribe tu mensaje aquí:", "")
-
-# Botón para enviar el mensaje escrito
-if st.button("Enviar mensaje"):
-    if user_input:
-        client1.on_publish = on_publish                            
-        client1.connect(broker, port)  
-        message = json.dumps({"Act1": user_input.strip()})
-        ret = client1.publish("mensajeUsuario", message)
-        st.success("Mensaje enviado: " + user_input)  # Muestra el mensaje enviado
-    else:
-        st.warning("Por favor, escribe un mensaje antes de enviar.")  # Aviso si el campo está vacío
+# Variable para almacenar el texto reconocido
+recognized_text = ""
 
 result = streamlit_bokeh_events(
     stt_button,
@@ -77,14 +66,33 @@ result = streamlit_bokeh_events(
 
 if result:
     if "GET_TEXT" in result:
-        recognized_text = result.get("GET_TEXT").strip()
+        recognized_text = result.get("GET_TEXT").strip()  # Almacena el texto reconocido
         st.write("Texto reconocido:", recognized_text)
+
+        # Publica el texto reconocido en MQTT
         client1.on_publish = on_publish                            
         client1.connect(broker, port)  
         message = json.dumps({"Act1": recognized_text})
         ret = client1.publish("mensajeUsuario", message)
 
-    try:
-        os.mkdir("temp")
-    except:
-        pass
+# Campo de texto para enviar mensajes manualmente
+user_input = st.text_input("Escribe tu mensaje aquí:", "")
+
+# Botón para enviar el mensaje escrito
+if st.button("Enviar mensaje"):
+    if user_input:
+        client1.on_publish = on_publish                            
+        client1.connect(broker, port)  
+        message = json.dumps({"Act1": user_input.strip()})
+        ret = client1.publish("mensajeUsuario", message)
+        st.success("Mensaje enviado: " + user_input)  # Muestra el mensaje enviado
+        
+        # Borra el texto reconocido al enviar un mensaje
+        recognized_text = ""  # Restablece el texto reconocido a vacío
+    else:
+        st.warning("Por favor, escribe un mensaje antes de enviar.")  # Aviso si el campo está vacío
+
+try:
+    os.mkdir("temp")
+except:
+    pass
