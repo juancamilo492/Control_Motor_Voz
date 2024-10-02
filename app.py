@@ -75,22 +75,32 @@ if result:
         message = json.dumps({"Act1": recognized_text})
         ret = client1.publish("mensajeUsuario", message)
 
-# Campo de texto para enviar mensajes manualmente
-user_input = st.text_input("Escribe tu mensaje aquí:", "")
+# Crear columnas para los controles manuales
+col1, col2 = st.columns(2)
 
-# Botón para enviar el mensaje escrito
-if st.button("Enviar mensaje"):
-    if user_input:
-        client1.on_publish = on_publish                            
-        client1.connect(broker, port)  
-        message = json.dumps({"Act1": user_input.strip()})
-        ret = client1.publish("mensajeUsuario", message)
-        st.success("Mensaje enviado: " + user_input)  # Muestra el mensaje enviado
-        
-        # Borra el texto reconocido al enviar un mensaje
-        recognized_text = ""  # Restablece el texto reconocido a vacío
-    else:
-        st.warning("Por favor, escribe un mensaje antes de enviar.")  # Aviso si el campo está vacío
+# Columna para Control de puerta manual
+with col1:
+    st.subheader("Control de puerta manual")
+    if st.button("Abrir"):
+        message = json.dumps({"Act1": "abre la puerta"})
+        client1.publish("mensajeUsuario", message)
+        st.success("Mensaje enviado: abre la puerta")
+    if st.button("Cerrar"):
+        message = json.dumps({"Act1": "cierra la puerta"})
+        client1.publish("mensajeUsuario", message)
+        st.success("Mensaje enviado: cierra la puerta")
+
+# Columna para Control de luz manual
+with col2:
+    st.subheader("Control de luz manual")
+    if st.button("Encender"):
+        message = json.dumps({"Act1": "enciende las luces"})
+        client1.publish("mensajeUsuario", message)
+        st.success("Mensaje enviado: enciende las luces")
+    if st.button("Apagar"):
+        message = json.dumps({"Act1": "apaga las luces"})
+        client1.publish("mensajeUsuario", message)
+        st.success("Mensaje enviado: apaga las luces")
 
 try:
     os.mkdir("temp")
