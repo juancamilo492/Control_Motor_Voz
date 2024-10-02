@@ -7,6 +7,11 @@ from PIL import Image
 import time
 import paho.mqtt.client as paho
 import json
+import torch
+from transformers import pipeline
+
+# Configuración del modelo de NLP
+classifier = pipeline("zero-shot-classification")
 
 def on_publish(client, userdata, result):  # Callback
     print("El dato ha sido publicado \n")
@@ -38,7 +43,7 @@ stt_button.js_on_event("button_click", CustomJS(code="""
     var recognition = new webkitSpeechRecognition();
     recognition.continuous = true;
     recognition.interimResults = true;
- 
+
     recognition.onresult = function (e) {
         var value = "";
         for (var i = e.resultIndex; i < e.results.length; ++i) {
@@ -53,9 +58,6 @@ stt_button.js_on_event("button_click", CustomJS(code="""
     recognition.start();
 """))
 
-# Variable para almacenar el texto reconocido
-recognized_text = ""
-
 result = streamlit_bokeh_events(
     stt_button,
     events="GET_TEXT",
@@ -64,16 +66,25 @@ result = streamlit_bokeh_events(
     override_height=75,
     debounce_time=0)
 
+# Categorías para clasificar los mensajes
+categories = ["abre la puerta", "cierra la puerta", "enciende las luces", "apaga las luces"]
+
 if result:
     if "GET_TEXT" in result:
         recognized_text = result.get("GET_TEXT").strip()  # Almacena el texto reconocido
         st.write("Texto reconocido:", recognized_text)
 
-        # Publica el texto reconocido en MQTT
-        client1.on_publish = on_publish                            
-        client1.connect(broker, port)  
-        message = json.dumps({"Act1": recognized_text})
-        ret = client1.publish("mensajeUsuario", message)
+        # Usar el clasificador para predecir el comando
+        predictions = classifier(recognized_text, categories)
+        predicted_label = predictions['labels'][0]  # Obtener la etiqueta más probable
+
+        # Si la confianza es suficientemente alta, enviar el mensaje
+        if predictions['scores'][0] > 0.7:  # Ajusta el umbral de confianza según sea necesario
+            message = json.dumps({"Act1": predicted_label})
+            client1.publish("mensajeUsuario", message)
+            st.success(f"Mensaje enviado: {predicted_label}")
+        else:
+            st.warning("No se reconoció ningún comando válido.")
 
 # Crear columnas para los controles manuales
 col1, col2 = st.columns(2)
