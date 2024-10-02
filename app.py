@@ -38,7 +38,7 @@ stt_button.js_on_event("button_click", CustomJS(code="""
     var recognition = new webkitSpeechRecognition();
     recognition.continuous = true;
     recognition.interimResults = true;
-
+ 
     recognition.onresult = function (e) {
         var value = "";
         for (var i = e.resultIndex; i < e.results.length; ++i) {
@@ -64,26 +64,16 @@ result = streamlit_bokeh_events(
     override_height=75,
     debounce_time=0)
 
-# Palabras clave y sus correspondientes mensajes
-commands = {
-    "abrir": "abre la puerta",
-    "cerrar": "cierra la puerta",
-    "encender": "enciende las luces",
-    "apagar": "apaga las luces"
-}
-
 if result:
     if "GET_TEXT" in result:
-        recognized_text = result.get("GET_TEXT").strip().lower()  # Almacena el texto reconocido
+        recognized_text = result.get("GET_TEXT").strip()  # Almacena el texto reconocido
         st.write("Texto reconocido:", recognized_text)
 
-        # Procesar el texto reconocido y enviar el tópico correspondiente
-        for key, topic in commands.items():
-            if key in recognized_text:
-                message = json.dumps({"Act1": topic})
-                client1.publish("mensajeUsuario", message)
-                st.success(f"Mensaje enviado: {topic}")
-                break  # Salir del bucle después de enviar el mensaje
+        # Publica el texto reconocido en MQTT
+        client1.on_publish = on_publish                            
+        client1.connect(broker, port)  
+        message = json.dumps({"Act1": recognized_text})
+        ret = client1.publish("mensajeUsuario", message)
 
 # Crear columnas para los controles manuales
 col1, col2 = st.columns(2)
