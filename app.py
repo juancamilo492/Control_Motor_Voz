@@ -18,7 +18,7 @@ def on_message(client, userdata, message):
     message_received = str(message.payload.decode("utf-8"))
     st.write(message_received)
 
-broker = "broker.hivemq.com"
+broker = "broker.emqx.io"
 port = 1883
 client1 = paho.Client("AppServoVoz")
 client1.on_message = on_message
