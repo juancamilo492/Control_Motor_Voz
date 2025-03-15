@@ -1,38 +1,47 @@
 import os
 import streamlit as st
+import time
+import json
+import paho.mqtt.client as mqtt
 from bokeh.models.widgets import Button
 from bokeh.models import CustomJS
 from streamlit_bokeh_events import streamlit_bokeh_events
 from PIL import Image
-import time
-import paho.mqtt.client as paho
-import json
 
-def on_publish(client, userdata, result):  # Callback
-    print("El dato ha sido publicado \n")
+# Configuración de MQTT
+broker = "broker.emqx.io"
+port = 1883
+topic = "mensajeUsuario"  # Tema MQTT que coincide con el código de Wokwi
+
+# Callback de publicación
+def on_publish(client, userdata, result):
+    print("Mensaje publicado correctamente")
     pass
 
+# Callback de recepción de mensajes
 def on_message(client, userdata, message):
     global message_received
     time.sleep(2)
     message_received = str(message.payload.decode("utf-8"))
-    st.write(message_received)
+    st.write("Mensaje recibido:", message_received)
 
-broker = "broker.emqx.io"
-port = 1883
-client1 = paho.Client("AppServoVoz")
-client1.on_message = on_message
+# Configuración del cliente MQTT
+client = mqtt.Client("AppServoVoz")
+client.on_publish = on_publish
+client.on_message = on_message
+client.connect(broker, port)
 
-st.title("Interfaces Multimodales")
-st.subheader("CONTROL POR VOZ")
+# Interfaz de Streamlit
+st.title("Control de Servo y Luces")
+st.subheader("Control por Voz y Manual")
 
 image = Image.open('voice_ctrl.jpg')
 st.image(image, width=200)
 
-st.write("Toca el Botón y habla ")
+st.write("Presiona el botón y habla para enviar comandos.")
 
-# Botón para reconocimiento de voz
-stt_button = Button(label=" Inicio ", width=200)
+# Botón de reconocimiento de voz
+stt_button = Button(label="Inicio", width=200)
 
 stt_button.js_on_event("button_click", CustomJS(code="""
     var recognition = new webkitSpeechRecognition();
@@ -53,55 +62,55 @@ stt_button.js_on_event("button_click", CustomJS(code="""
     recognition.start();
 """))
 
-# Variable para almacenar el texto reconocido
+# Variable para el texto reconocido
 recognized_text = ""
 
+# Ejecuta el reconocimiento de voz y obtiene el texto
 result = streamlit_bokeh_events(
     stt_button,
     events="GET_TEXT",
     key="listen",
     refresh_on_update=False,
     override_height=75,
-    debounce_time=0)
+    debounce_time=0
+)
 
 if result:
     if "GET_TEXT" in result:
-        recognized_text = result.get("GET_TEXT").strip()  # Almacena el texto reconocido
+        recognized_text = result.get("GET_TEXT").strip()
         st.write("Texto reconocido:", recognized_text)
 
-        # Publica el texto reconocido en MQTT
-        client1.on_publish = on_publish                            
-        client1.connect(broker, port)  
+        # Publica el comando en MQTT
         message = json.dumps({"Act1": recognized_text})
-        ret = client1.publish("Cosplay", message)
+        client.publish(topic, message)
+        st.success(f"Comando enviado: {recognized_text}")
 
-# Crear columnas para los controles manuales
+# Controles manuales
 col1, col2 = st.columns(2)
 
-# Columna para Control de puerta manual
 with col1:
-    st.subheader("Control de puerta manual")
-    if st.button("Abrir"):
+    st.subheader("Control de Puerta")
+    if st.button("Abrir Puerta"):
         message = json.dumps({"Act1": "abre la puerta"})
-        client1.publish("Cosplay", message)
+        client.publish(topic, message)
         st.success("Mensaje enviado: abre la puerta")
-    if st.button("Cerrar"):
+    if st.button("Cerrar Puerta"):
         message = json.dumps({"Act1": "cierra la puerta"})
-        client1.publish("Cosplay", message)
+        client.publish(topic, message)
         st.success("Mensaje enviado: cierra la puerta")
 
-# Columna para Control de luz manual
 with col2:
-    st.subheader("Control de luz manual")
-    if st.button("Encender"):
+    st.subheader("Control de Luces")
+    if st.button("Encender Luces"):
         message = json.dumps({"Act1": "enciende las luces"})
-        client1.publish("Cosplay", message)
+        client.publish(topic, message)
         st.success("Mensaje enviado: enciende las luces")
-    if st.button("Apagar"):
+    if st.button("Apagar Luces"):
         message = json.dumps({"Act1": "apaga las luces"})
-        client1.publish("Cosplay", message)
+        client.publish(topic, message)
         st.success("Mensaje enviado: apaga las luces")
 
+# Verificación de carpeta temporal
 try:
     os.mkdir("temp")
 except:
